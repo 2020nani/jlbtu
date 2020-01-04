@@ -53,8 +53,8 @@ export default class Camera extends Component {
     cameraModalOpened: false,
     dataModalOpened: false,
     realtyData: {
-      
-      images: [],
+     
+      images:[],
     },
   };
   
@@ -70,11 +70,8 @@ export default class Camera extends Component {
       //{ enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
     //);
   //};
+ 
   
-  componentDidMount() {
-    
-    this. renderConditionalsButtons 
-  }
 
   handleNewRealtyPress = () => this.setState({ newRealty: !this.state.newRealty })
 
@@ -111,7 +108,6 @@ export default class Camera extends Component {
       const { realtyData } = this.state;
       this.setState({ realtyData: {
         ...realtyData,
-       
         images: [
           ...realtyData.images,
           data,
@@ -124,31 +120,24 @@ export default class Camera extends Component {
     try {
       const {
         realtyData: {
-         
-          files
+          images
         }
+        
       } = this.state;
 
-      
+      const imagesData  = new FormData();
 
-      const imagesData = new FormData();
-
-      files.forEach((image,index) => {
-        imagesData.append('image', {
+      images.forEach((image, index) => {
+        imagesData.append('files', {
           uri: image.uri,
           type: 'image/jpeg',
-          id:image.id
-          
+          name: `${imagesData.originalName}_${index}.jpg`
         });
       });
-
-      await api.post( `/files`,
+      await api.post(
+        `/files`,
         imagesData,
       );
-
-      
-      
-      this.getLocation()
       this.setState({ newRealty:false });
       this.handleDataModalClose()
       
@@ -246,6 +235,9 @@ export default class Camera extends Component {
       <ModalContainer>
 
         { this.renderImagesList() }
+        
+            
+            
         <DataButtonsWrapper>
           <SelectButtonContainer onPress={this.saveRealty}>
             <ButtonText>Enviar Foto</ButtonText>
