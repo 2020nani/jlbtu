@@ -1,12 +1,19 @@
 import React, { Component } from 'react';
 
-import { StatusBar, Modal,PermissionsAndroid, AsyncStorage } from 'react-native';
+import { StatusBar, Modal,StyleSheet,PermissionsAndroid, AsyncStorage } from 'react-native';
 
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import Background from '~/components/Background';
 
 import { RNCamera } from 'react-native-camera';
+import Geolocation from 'react-native-geolocation-service';
+
+import MapView, {Marker} from 'react-native-maps';
+import Geocoder from 'react-native-geocoding';
+ 
+
+ Geocoder.init("AIzaSyAm7cwW_QWAGx7w5BCUt45XvUI3jGclyoo", {language : "en"}); // set the language
 
 import api from '../../services/api';
 
@@ -19,7 +26,6 @@ import {
   CancelButtonContainer,
   SelectButtonContainer,
   ButtonText,
-  Marker,
   ModalContainer,
   ModalImagesListContainer,
   ModalImagesList,
@@ -49,29 +55,37 @@ export default class Camera extends Component {
   };
   
   state = {
+    locations : [],
+    
+    
     newRealty: false,
     cameraModalOpened: false,
     dataModalOpened: false,
     realtyData: {
-     
+      
+      position: "",
       images:[],
     },
   };
-  
+  componentDidMount() {
+    this.getLocation();
+  }
 
-  //findCoordinates = () => {
-   // navigator.geolocation.getCurrentPosition(
-     // position => {
-       // const location = JSON.stringify(position);
+  getLocation = async () => {
+    try {
+      const response = await  {
+        latitude: 37.78825,
+        longitude: -122.4324,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+        
+      }
 
-        //this.setState({ location });
-      //},
-      //error => Alert.alert(error.message),
-      //{ enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
-    //);
-  //};
- 
-  
+      this.setState({ locations: response.data });
+    } catch (err) {
+      console.tron.log(err);
+    }
+  }
 
   handleNewRealtyPress = () => this.setState({ newRealty: !this.state.newRealty })
 
@@ -82,22 +96,79 @@ export default class Camera extends Component {
     cameraModalOpened: false,
   })
   
-
-
-
   handleGetPositionPress = async () => {
-
     try {
-      
-      
-      this.setState({
+      const request_location_runtime_permission = async () => {
+        try {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            {
+              title: 'Permissão de Localização',
+              message: 'A aplicação precisa da permissão de localização.',
+            },
+          );
+          if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+            Geolocation.getCurrentPosition(
+              pos => {
+                setPosition({
+                  
+                    ...position,
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                    latitude: pos.coords.latitudeDelta,
+                    longitude: pos.coords.longitudeDelta,
+                  
+                  
+                });
+              },
+              error => {
+                console.log(error);
+
+                Alert.alert('Houve um erro ao pegar a latitude e longitude.');
+              },
+              { enableHighAccuracy: true, timeout: 15000, maximumAge:10000 }
+            );
+          } else {
+            Alert.alert('Permissão de localização não concedida');
+          }
+        } catch (err) {
+          console.log(err);
+        }
+      };
+      const localEndereco = async () => {
+      Geocoder.from(position)
+      .then(json => {
+          var address = json.results[0].formatted_address;
+        //setAddressComponent({
+         // ...addressComponent,
+         // locality: address.locality,
+         // streetNumber: address.streetNumber,
+        //  streetName: address.streetName
+       // });
+       this.setState({
         cameraModalOpened: true,
-        
+        realtyData: {
+          ...this.state.realtyData,
+        position: address
+        },
       });
+        
+      })
+      .catch(error => console.warn(error));
+    }
+
+     
     } catch (err) {
       console.tron.log(err);
     }
-  }
+    //try {
+      // this.setState({
+       // cameraModalOpened: true,       
+      //});
+    //} catch (err) {
+     // console.tron.log(err);
+   // }
+    }
   
 
 
@@ -120,18 +191,23 @@ export default class Camera extends Component {
     try {
       const {
         realtyData: {
+          position,
           images
         }
-        
       } = this.state;
+      const newRealtyResponse = await api.post('/files', {
+        position
+      });
+        
 
       const imagesData  = new FormData();
 
       images.forEach((image, index) => {
         imagesData.append('files', {
+          local:newRealtyResponse.data.position,
           uri: image.uri,
           type: 'image/jpeg',
-          name: `${imagesData.originalName}_${index}.jpg`
+          name: imagesData.originalName.jpg
         });
       });
       await api.post(
@@ -232,12 +308,36 @@ export default class Camera extends Component {
       animationType="slide"
       onRequestClose={this.handleDataModalClose}
     >
-      <ModalContainer>
+     <ModalContainer>
+     <ModalContainer>
+     <MapView
+      style={styles.map}
+      region={this.state.realtyData.position.longitude,
+        this.state.realtyData.position.latitude,
+        this.state.realtyData.position.longitudeDelta,
+        this.state.realtyData.position.latitudeDelta
+      }
+      //onPress={e =>
+       // setPosition({
+      //    ...position,
+        //  latitude: e.nativeEvent.coordinate.latitude,
+        //  longitude: e.nativeEvent.coordinate.longitude,
+     //   })
+    //  }}
+     >
+      <Marker
+          coordinate={this.state.realtyData.position.longitude,
+            this.state.realtyData.position.latitude,
+            this.state.realtyData.position.longitudeDelta,
+            this.state.realtyData.position.latitudeDelta  
+          }
+          title={'Marcador'}
+          description={'Testando o marcador no mapa'}
+        />
+    </MapView>
+        </ModalContainer>
 
-        { this.renderImagesList() }
-        
-            
-            
+        { this.renderImagesList() }     
         <DataButtonsWrapper>
           <SelectButtonContainer onPress={this.saveRealty}>
             <ButtonText>Enviar Foto</ButtonText>
@@ -254,7 +354,26 @@ export default class Camera extends Component {
     return (
       <Container>
        <StatusBar barStyle="light-content" />
-        <Background></Background>
+       <MapView
+      style={styles.map}
+      region={{
+        latitude: 37.78825,
+        longitude: -122.4324,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+      }}
+     >
+      <Marker
+          coordinate={{
+            latitude: 37.78825,
+            longitude: -122.4324,
+            latitudeDelta: 0.0922,
+            longitudeDelta: 0.0421,
+          }}
+          title={'Marcador'}
+          description={'Testando o marcador no mapa'}
+        />
+    </MapView>
         
         { this.renderConditionalsButtons() }
         
@@ -271,3 +390,15 @@ Camera.navigationOptions = {
     <Icon name="photo" size={20} color={tintColor} />
   ),
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  map: {
+    backgroundColor: '#4682B4',
+    height: '100%',
+    width: '100%',
+  },
+ 
+});
